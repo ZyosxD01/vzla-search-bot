@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#040A1C">
+    <meta name="description" content="Búsqueda federada de personas desaparecidas en el terremoto de Venezuela del 24 de junio de 2026.">
+    <title>Búsqueda Terremoto Venezuela 🇻🇪</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23040A1C'/%3E%3Crect x='10' y='16' width='44' height='11' fill='%23FFCE00'/%3E%3Crect x='10' y='27' width='44' height='11' fill='%230033A0'/%3E%3Crect x='10' y='38' width='44' height='11' fill='%23EF3340'/%3E%3C/svg%3E">
+</head>
+<body>
+    <!-- Definiciones SVG compartidas: estrella, bandera, degradado dorado -->
+    <svg class="svg-defs" aria-hidden="true" focusable="false">
+        <defs>
+            <path id="star8" d="M0,-8 L2,-2.75 7.6,-2.47 3.23,1.05 4.7,6.47 0,3.4 -4.7,6.47 -3.23,1.05 -7.6,-2.47 -2,-2.75 Z"/>
+            <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#FFDE59"/>
+                <stop offset="0.55" stop-color="#FFCE00"/>
+                <stop offset="1" stop-color="#E0A800"/>
+            </linearGradient>
+            <symbol id="vz-flag" viewBox="0 0 90 60">
+                <rect width="90" height="20" y="0"  fill="#FFCE00"/>
+                <rect width="90" height="20" y="20" fill="#0033A0"/>
+                <rect width="90" height="20" y="40" fill="#EF3340"/>
+                <g fill="#fff" transform="translate(45,31)">
+                    <use href="#star8" transform="translate(-24.5,3.5) scale(0.28)"/>
+                    <use href="#star8" transform="translate(-18,-2.5) scale(0.28)"/>
+                    <use href="#star8" transform="translate(-11,-6.5) scale(0.28)"/>
+                    <use href="#star8" transform="translate(-3.7,-8.6) scale(0.28)"/>
+                    <use href="#star8" transform="translate(3.7,-8.6) scale(0.28)"/>
+                    <use href="#star8" transform="translate(11,-6.5) scale(0.28)"/>
+                    <use href="#star8" transform="translate(18,-2.5) scale(0.28)"/>
+                    <use href="#star8" transform="translate(24.5,3.5) scale(0.28)"/>
+                </g>
+            </symbol>
+            <!-- Iconos premium (trazo 1.8, terminaciones redondeadas) -->
+            <symbol id="ico-search" viewBox="0 0 24 24">
+                <circle cx="10.5" cy="10.5" r="6.2" fill="none" stroke="currentColor" stroke-width="2.2"/>
+                <line x1="15.3" y1="15.3" x2="20.6" y2="20.6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+                <path d="M8 8.2a3.4 3.4 0 0 1 2.6-1.1" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" opacity="0.7"/>
+            </symbol>
+            <symbol id="ico-phone" viewBox="0 0 24 24">
+                <path d="M5.5 3.5h3l1.7 4.2-2.1 1.6a12.5 12.5 0 0 0 6.6 6.6l1.6-2.1 4.2 1.7v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 3.5 5.7a2 2 0 0 1 2-2.2z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            </symbol>
+            <symbol id="ico-shield" viewBox="0 0 24 24">
+                <path d="M12 2.8 4.8 5.6v5.2c0 4.6 3 8.9 7.2 10.4 4.2-1.5 7.2-5.8 7.2-10.4V5.6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="m8.8 11.8 2.3 2.3 4.1-4.6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+            </symbol>
+            <symbol id="ico-copy" viewBox="0 0 24 24">
+                <rect x="8.5" y="8.5" width="11" height="11" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M15.5 5.5v-1a2 2 0 0 0-2-2h-8a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" transform="translate(1,1)"/>
+            </symbol>
+        </defs>
+    </svg>
+
+    <!-- Cielo: estrellas en canvas + aurora tricolor + silueta del Ávila -->
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <div class="aurora" aria-hidden="true">
+        <span class="aurora-band aurora-yellow"></span>
+        <span class="aurora-band aurora-blue"></span>
+        <span class="aurora-band aurora-red"></span>
+    </div>
+    <svg class="avila" aria-hidden="true" viewBox="0 0 1440 220" preserveAspectRatio="none">
+        <path class="avila-back" d="M0,220 L0,150 Q120,90 260,128 Q380,60 520,110 Q660,30 810,96 Q950,50 1090,104 Q1230,66 1330,118 Q1400,140 1440,128 L1440,220 Z"/>
+        <path class="avila-front" d="M0,220 L0,178 Q160,130 320,164 Q470,110 620,152 Q790,96 940,148 Q1100,112 1250,158 Q1360,180 1440,166 L1440,220 Z"/>
+    </svg>
+
+    <!-- Consentimiento obligatorio antes de usar la búsqueda -->
+    <div class="consent" id="consent" role="dialog" aria-modal="true" aria-labelledby="consent-title" hidden>
+        <div class="consent-card">
+            <div class="consent-tricolor" aria-hidden="true"></div>
+            <svg class="consent-flag" aria-hidden="true"><use href="#vz-flag"/></svg>
+            <h2 id="consent-title" data-i18n="consent_title">Antes de usar la búsqueda</h2>
+            <p data-i18n="consent_p1">
+                Esta página es un buscador auspiciado que consulta plataformas ya creadas
+                por la comunidad y organizaciones. <strong>No tenemos base de datos propia</strong>
+                ni almacenamos información personal.
+            </p>
+            <p data-i18n="consent_p2">
+                No nos hacemos responsables por los detalles publicados en las fuentes.
+                Verifica siempre cada dato en el sitio original antes de tomar decisiones.
+            </p>
+            <p class="consent-limit">
+                <svg width="15" height="15" aria-hidden="true"><use href="#ico-shield"/></svg>
+                <span data-i18n="consent_limit">Para proteger las plataformas, el límite es de 5 búsquedas por hora por persona.</span>
+            </p>
+            <button type="button" id="consent-accept" class="consent-btn" data-i18n="consent_accept">
+                Acepto y entiendo
+            </button>
+        </div>
+    </div>
+
+    <!-- Control de sonido -->
+    <button type="button" id="sound-toggle" class="sound-toggle" aria-pressed="true" title="Sonido">
+        <svg class="icon-sound-on" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/>
+            <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+            <path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+        </svg>
+        <svg class="icon-sound-off" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 5 6 9H2v6h4l5 4V5z" fill="currentColor" stroke="none"/>
+            <line x1="22" y1="9" x2="16" y2="15"/>
+            <line x1="16" y1="9" x2="22" y2="15"/>
+        </svg>
+    </button>
+
+    <main class="app">
+        <header class="hero reveal">
+            <!-- Las 8 estrellas de la bandera, en arco -->
+            <svg class="hero-stars" viewBox="0 0 240 72" aria-hidden="true">
+                <use href="#star8" class="fstar" style="--i:0" x="52.5"  y="58"/>
+                <use href="#star8" class="fstar" style="--i:1" x="67"    y="39.8"/>
+                <use href="#star8" class="fstar" style="--i:2" x="86.2"  y="26.7"/>
+                <use href="#star8" class="fstar" style="--i:3" x="108.4" y="19.9"/>
+                <use href="#star8" class="fstar" style="--i:4" x="131.6" y="19.9"/>
+                <use href="#star8" class="fstar" style="--i:5" x="153.8" y="26.7"/>
+                <use href="#star8" class="fstar" style="--i:6" x="173"   y="39.8"/>
+                <use href="#star8" class="fstar" style="--i:7" x="187.5" y="58"/>
+            </svg>
+            <svg class="hero-flag" aria-hidden="true"><use href="#vz-flag"/></svg>
+            <h1 class="hero-title" data-i18n="title">Búsqueda Terremoto Venezuela</h1>
+            <p class="hero-subtitle" data-i18n="subtitle">
+                Busca personas desaparecidas en múltiples plataformas oficiales y comunitarias.
+            </p>
+            <div class="lang-toggle" role="group" aria-label="Idioma / Language">
+                <button type="button" class="lang-btn is-active" data-lang="es">Español</button>
+                <button type="button" class="lang-btn" data-lang="en">English</button>
+            </div>
+        </header>
+
+        <section class="disclaimer reveal" id="disclaimer" aria-live="polite">
+            <span class="disclaimer-beacon" aria-hidden="true"></span>
+            <p>
+                <strong data-i18n="disclaimer_title">Importante:</strong>
+                <span data-i18n="disclaimer_body">
+                    Esta es una búsqueda agregada sobre plataformas de terceros, sin base de
+                    datos propia. Verifica siempre el estado en la fuente original.
+                </span>
+            </p>
+        </section>
+
+        <section class="chat reveal" aria-label="Chat de búsqueda">
+            <div class="chat-tricolor" aria-hidden="true"></div>
+            <div class="chat-log" id="chat-log" role="log" aria-live="polite">
+                <div class="msg msg-bot">
+                    <div class="msg-avatar" aria-hidden="true">
+                        <svg class="avatar-flag"><use href="#vz-flag"/></svg>
+                    </div>
+                    <div class="msg-bubble" data-i18n="welcome">
+                        Hola. Escribe el nombre (o parte del nombre) de la persona que buscas —
+                        consulto 12 plataformas a la vez. Abajo tienes el directorio de emergencia.
+                    </div>
+                </div>
+            </div>
+
+            <form class="composer" id="composer" autocomplete="off">
+                <label for="q" class="visually-hidden" data-i18n="search_label">Buscar persona</label>
+                <div class="composer-field">
+                    <input
+                        type="search"
+                        id="q"
+                        name="q"
+                        required
+                        minlength="2"
+                        maxlength="200"
+                        placeholder="Ej: María González, vista en Catia La Mar"
+                        data-i18n-placeholder="search_placeholder"
+                    >
+                </div>
+                <button type="submit" id="send">
+                    <span class="send-label" data-i18n="send">Buscar</span>
+                    <svg class="send-icon" width="17" height="17" aria-hidden="true"><use href="#ico-search"/></svg>
+                </button>
+            </form>
+
+            <div class="chat-foot">
+                <div class="examples">
+                    <span class="examples-label" data-i18n="examples_label">Ejemplos:</span>
+                    <button type="button" class="example" data-q="María González">María González</button>
+                    <button type="button" class="example" data-q="José Rodríguez Catia">José Rodríguez Catia</button>
+                    <button type="button" class="example" data-q="niño 8 años La Guaira">niño 8 años La Guaira</button>
+                </div>
+                <div class="quota" id="quota" aria-live="polite"></div>
+            </div>
+        </section>
+
+        <section class="directory reveal" aria-label="Directorio de emergencia">
+            <details>
+                <summary>
+                    <svg class="directory-icon" width="17" height="17" aria-hidden="true"><use href="#ico-phone"/></svg>
+                    <span data-i18n="directory_title">Directorio de emergencia — teléfonos y portales</span>
+                    <span class="directory-chevron" aria-hidden="true">▾</span>
+                </summary>
+                <div class="directory-body">
+                    <div class="dir-group dir-phones">
+                        <h3 data-i18n="dir_phones">Teléfonos de emergencia</h3>
+                        <p><strong>911</strong> — Protección Civil</p>
+                        <p><strong>0800-LOJUSTO (0800-659-8786)</strong> — CICPC desaparecidos</p>
+                        <p><strong>0212-532-5050</strong> — Venemergencia</p>
+                    </div>
+                    <div class="dir-group">
+                        <h3 data-i18n="dir_persons">Personas desaparecidas / encontradas</h3>
+                        <p><a href="https://desaparecidosterremotovenezuela.com/" target="_blank" rel="noopener noreferrer">desaparecidosterremotovenezuela.com</a> — 26.000+ reportes, reconocimiento facial</p>
+                        <p><a href="https://venezuelatebusca.com/" target="_blank" rel="noopener noreferrer">venezuelatebusca.com</a> — 10.000+ reportes</p>
+                        <p><a href="https://statusvzla.com/" target="_blank" rel="noopener noreferrer">statusvzla.com</a> — búsqueda cruzada + encontrados</p>
+                        <p><a href="https://terremotoenvenezuela.com/" target="_blank" rel="noopener noreferrer">terremotoenvenezuela.com</a></p>
+                        <p><a href="https://busquedavzla.netlify.app/" target="_blank" rel="noopener noreferrer">busquedavzla.netlify.app</a></p>
+                        <p><a href="https://rescate-ve.vercel.app/" target="_blank" rel="noopener noreferrer">rescate-ve.vercel.app</a></p>
+                        <p><a href="https://venapp.com/" target="_blank" rel="noopener noreferrer">venapp.com</a></p>
+                        <p><a href="https://reportevenezuela.com/" target="_blank" rel="noopener noreferrer">reportevenezuela.com</a></p>
+                    </div>
+                    <div class="dir-group">
+                        <h3 data-i18n="dir_hospital">Hospitalizados / pacientes</h3>
+                        <p><a href="https://pacientesterremotovzla.lovable.app/" target="_blank" rel="noopener noreferrer">pacientesterremotovzla.lovable.app</a></p>
+                        <p><a href="https://hospitalesenvenezuela.com/" target="_blank" rel="noopener noreferrer">hospitalesenvenezuela.com</a></p>
+                        <p><a href="https://osirisberbesia.com/pacientesinfo" target="_blank" rel="noopener noreferrer">osirisberbesia.com/pacientesinfo</a></p>
+                    </div>
+                    <div class="dir-group">
+                        <h3 data-i18n="dir_aid">Acopio / ayuda / refugios</h3>
+                        <p><a href="https://venezuela-ayuda.org/" target="_blank" rel="noopener noreferrer">venezuela-ayuda.org</a> — portal integral</p>
+                        <p><a href="https://ayudavenezuela2026.com/" target="_blank" rel="noopener noreferrer">ayudavenezuela2026.com</a></p>
+                        <p><a href="https://ayudaparavenezuela.com/" target="_blank" rel="noopener noreferrer">ayudaparavenezuela.com</a></p>
+                        <p><a href="https://ayudavenezuela.app/rescate" target="_blank" rel="noopener noreferrer">ayudavenezuela.app/rescate</a></p>
+                        <p><a href="https://refugiosvenezuela.com/" target="_blank" rel="noopener noreferrer">refugiosvenezuela.com</a></p>
+                        <p><a href="https://redayudavenezuela.com/" target="_blank" rel="noopener noreferrer">redayudavenezuela.com</a></p>
+                    </div>
+                    <div class="dir-group">
+                        <h3 data-i18n="dir_pets">Mascotas</h3>
+                        <p><a href="https://huellascan.com/terremoto" target="_blank" rel="noopener noreferrer">huellascan.com/terremoto</a> — reconocimiento de huellas</p>
+                    </div>
+                    <div class="dir-group">
+                        <h3 data-i18n="dir_official">Fuentes oficiales</h3>
+                        <p><a href="https://familylinks.icrc.org/" target="_blank" rel="noopener noreferrer">familylinks.icrc.org</a> — Cruz Roja (ICRC)</p>
+                        <p><a href="https://pcivil.gob.ve/" target="_blank" rel="noopener noreferrer">pcivil.gob.ve</a> — Protección Civil</p>
+                        <p><a href="https://unocha.org/" target="_blank" rel="noopener noreferrer">unocha.org</a> — OCHA (ONU)</p>
+                        <p><a href="https://iom.int/venezuela-earthquake-response" target="_blank" rel="noopener noreferrer">iom.int</a> — OIM</p>
+                        <p><a href="https://unhcr.org/" target="_blank" rel="noopener noreferrer">unhcr.org</a> — ACNUR</p>
+                    </div>
+                </div>
+            </details>
+        </section>
+
+        <footer class="foot reveal">
+            <p data-i18n="footer">
+                Búsqueda federada sobre plataformas oficiales y comunitarias. Cada resultado
+                enlaza a su fuente original.
+            </p>
+            <p class="foot-credit">
+                By <strong>ZyosDev</strong> © 2026 — ¡Venezuela Libre For Ever!
+                <svg class="credit-flag" aria-hidden="true"><use href="#vz-flag"/></svg>
+            </p>
+            <p class="foot-tech">
+                <span data-i18n="powered_by">Funciona con</span>
+                · Playwright · MiniMax · Render
+            </p>
+        </footer>
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
