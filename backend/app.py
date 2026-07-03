@@ -10,12 +10,6 @@ Architecture:
 - Playwright for headless browser automation against JS-rendered sites
 - MiniMax API for bilingual response formatting
 - No persistent database — all queries are live federated searches
-
-Ethics & legal guardrails (per PLAN v2 editorial policy):
-- No personal data is stored permanently
-- All results link back to original source platforms
-- Rate limiting protects upstream services
-- If a source asks us to stop, we remove its adapter
 """
 
 import asyncio
@@ -43,10 +37,7 @@ logger = logging.getLogger("vzla-search")
 # Configuration
 # ---------------------------------------------------------------------------
 
-# Platforms enabled in the MVP. Add/remove here to control the federation.
-# Each entry must have a matching adapter in `platforms/<name>.py`.
 ENABLED_PLATFORMS = [
-    # Personas desaparecidas / encontradas
     "desaparecidosterremotovenezuela",
     "venezuelatebusca",
     "statusvzla",
@@ -55,41 +46,43 @@ ENABLED_PLATFORMS = [
     "rescateve",
     "venapp",
     "reportevenezuela",
-    # Hospitalizados / pacientes
     "pacientesterremoto",
     "pacientesinfo",
-    # Portales integrales
     "venezuelaayuda",
-    # Mascotas (búsqueda por descripción: especie, raza, color, zona)
     "huellascan",
-    # Estándar internacional
     "icrc",
 ]
 
-# Per-request timeout for a single platform search.
 PLATFORM_TIMEOUT_SECONDS = 25
 
-# --- Anti-abuse layers (no user registration, by design) ------------------
-# 1. Required app header — blocks naive curl/script spam.
-# 2. Cooldown between searches — blocks bursts.
-# 3. 5 searches/hour per key.
-# 4. 15 searches/day per key (catches hourly-limit cyclers).
-# Every layer is applied per-IP AND per-device (client id header), so
-# rotating one of the two is not enough to evade the limits.
-REQUIRED_APP_HEADER = "vzla-search"
-RATE_LIMIT_MAX = 5           # searches per hour
-RATE_LIMIT_WINDOW = 3600
-DAILY_LIMIT_MAX = 15         # searches per day
-DAILY_WINDOW = 86400
-COOLDOWN_SECONDS = 15        # min seconds between searches
+# Concurrency cap for Playwright browser contexts.
+# Render free tier has 512MB RAM; Chromium needs ~300-500MB. Spawning
+# 13 contexts in parallel OOM-kills the browser process. 3 concurrent
+# keeps peak memory well under the cap.
+PLAYWRIGHT_CONCURRENCY = 3
+_search_semaphore: Optional[asyncio.Semaphore] = None
 
-_rate_log: Dict[str, Deque[float]] = defaultdict(deque)    # hourly, per key
-_daily_log: Dict[str, Deque[float]] = defaultdict(deque)   # daily, per key
-_last_search: Dict[str, float] = {}                        # cooldown, per key
+
+def _get_search_semaphore() -> asyncio.Semaphore:
+    global _search_semaphore
+    if _search_semaphore is None:
+        _search_semaphore = asyncio.Semaphore(PLAYWRIGHT_CONCURRENCY)
+    return _search_semaphore
+
+# --- Anti-abuse layers (no user registration, by design) ------------------
+REQUIRED_APP_HEADER = "vzla-search"
+RATE_LIMIT_MAX = 5
+RATE_LIMIT_WINDOW = 3600
+DAILY_LIMIT_MAX = 15
+DAILY_WINDOW = 86400
+COOLDOWN_SECONDS = 15
+
+_rate_log: Dict[str, Deque[float]] = defaultdict(deque)
+_daily_log: Dict[str, Deque[float]] = defaultdict(deque)
+_last_search: Dict[str, float] = {}
 
 
 def _client_ip(request: Request) -> str:
-    """Client IP, honouring the proxy header Render puts in front of us."""
     fwd = request.headers.get("x-forwarded-for", "")
     if fwd:
         return fwd.split(",")[0].strip()
@@ -97,7 +90,6 @@ def _client_ip(request: Request) -> str:
 
 
 def _rate_keys(request: Request) -> List[str]:
-    """Keys the limits apply to: always the IP, plus the device id if sent."""
     keys = [f"ip:{_client_ip(request)}"]
     cid = request.headers.get("x-vzla-client", "").strip()[:64]
     if cid:
@@ -131,24 +123,18 @@ def _limited(retry_minutes: int, retry_seconds: int = 0) -> HTTPException:
 
 
 def check_rate_limit(request: Request) -> int:
-    """Run every anti-abuse layer. Returns remaining hourly searches.
-
-    Raises HTTPException 403 (missing app header) or 429 (limited).
-    """
     if request.headers.get("x-requested-with", "") != REQUIRED_APP_HEADER:
         raise HTTPException(403, "Missing application header")
 
     now = time.time()
     keys = _rate_keys(request)
 
-    # Cooldown between searches.
     for key in keys:
         last = _last_search.get(key, 0.0)
         wait = COOLDOWN_SECONDS - (now - last)
         if wait > 0:
             raise _limited(0, retry_seconds=int(wait) + 1)
 
-    # Hourly + daily windows — check ALL keys before consuming ANY.
     for key in keys:
         hourly = _rate_log[key]
         while hourly and now - hourly[0] > RATE_LIMIT_WINDOW:
@@ -173,26 +159,15 @@ def check_rate_limit(request: Request) -> int:
 # ---------------------------------------------------------------------------
 # Frontend path resolution
 # ---------------------------------------------------------------------------
-# Render's Blueprint interpretation of dockerContext is not always obvious:
-#   - if dockerContext = the backend folder, /app/frontend/ exists
-#   - if dockerContext = the repo root, frontend sits at /app/frontend/
-#     and app.py lives at /app/backend/app.py
-# To stay robust across both layouts (and a local venv), try the obvious
-# candidates and log the one that actually has index.html.
 
 def _find_frontend_dir() -> Optional[str]:
     here = os.path.dirname(os.path.abspath(__file__))
     candidates = [
-        # Same directory as app.py — works when backend/ contents land flat in /app/
         os.path.join(here, "frontend"),
-        # Sibling layout — frontend sits next to the backend/ folder
         os.path.join(here, "..", "frontend"),
-        # Two levels up — covers unusual COPY contexts
         os.path.join(here, "..", "..", "frontend"),
-        # Hardcoded /app paths as a last resort
         "/app/frontend",
         "/frontend",
-        # CWD-relative when running locally without Docker
         os.path.join(os.getcwd(), "frontend"),
     ]
     logger.info("Resolving frontend dir. __file__=%s, cwd=%s", __file__, os.getcwd())
@@ -217,14 +192,13 @@ def _find_frontend_dir() -> Optional[str]:
 
 FRONTEND_DIR = _find_frontend_dir()
 
-
 # ---------------------------------------------------------------------------
 # Schemas
 # ---------------------------------------------------------------------------
 
 class SearchRequest(BaseModel):
-    query: str = Field(..., min_length=2, max_length=200, description="Name or partial name to search")
-    language: Optional[str] = Field("auto", description="es | en | auto")
+    query: str = Field(..., min_length=2, max_length=200)
+    language: Optional[str] = Field("auto")
 
 
 class PlatformResult(BaseModel):
@@ -247,13 +221,11 @@ class SearchResponse(BaseModel):
     disclaimer: str
     searches_remaining: int = 0
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 def detect_language(text: str) -> str:
-    """Cheap heuristic language detection — falls back to English."""
     if not text:
         return "en"
     lowered = text.lower()
@@ -272,13 +244,18 @@ def detect_language(text: str) -> str:
 
 
 async def search_platform_safe(name: str, query: str) -> PlatformResult:
-    """Run a single platform search with timeout + error isolation."""
+    """Run a single platform search with timeout + error isolation + semaphore.
+
+    The semaphore caps simultaneous Chromium contexts so the browser
+    process isn't OOM-killed on Render's 512MB free tier.
+    """
     started = asyncio.get_event_loop().time()
     try:
-        searcher = get_searcher(name)
-        matches = await asyncio.wait_for(
-            searcher.search(query), timeout=PLATFORM_TIMEOUT_SECONDS
-        )
+        async with _get_search_semaphore():
+            searcher = get_searcher(name)
+            matches = await asyncio.wait_for(
+                searcher.search(query), timeout=PLATFORM_TIMEOUT_SECONDS
+            )
         elapsed_ms = int((asyncio.get_event_loop().time() - started) * 1000)
         return PlatformResult(
             platform=name,
@@ -291,23 +268,16 @@ async def search_platform_safe(name: str, query: str) -> PlatformResult:
         elapsed_ms = int((asyncio.get_event_loop().time() - started) * 1000)
         logger.warning("Platform %s timed out after %ds", name, PLATFORM_TIMEOUT_SECONDS)
         return PlatformResult(
-            platform=name,
-            platform_label=name,
-            platform_url="",
-            error=f"Timeout after {PLATFORM_TIMEOUT_SECONDS}s",
-            timing_ms=elapsed_ms,
+            platform=name, platform_label=name, platform_url="",
+            error=f"Timeout after {PLATFORM_TIMEOUT_SECONDS}s", timing_ms=elapsed_ms,
         )
-    except Exception as exc:  # noqa: BLE001 — boundary
+    except Exception as exc:
         elapsed_ms = int((asyncio.get_event_loop().time() - started) * 1000)
         logger.exception("Platform %s failed", name)
         return PlatformResult(
-            platform=name,
-            platform_label=name,
-            platform_url="",
-            error=f"{type(exc).__name__}: {exc}",
-            timing_ms=elapsed_ms,
+            platform=name, platform_label=name, platform_url="",
+            error=f"{type(exc).__name__}: {exc}", timing_ms=elapsed_ms,
         )
-
 
 # ---------------------------------------------------------------------------
 # App
@@ -316,18 +286,14 @@ async def search_platform_safe(name: str, query: str) -> PlatformResult:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     logger.info("Starting up — enabled platforms: %s", ENABLED_PLATFORMS)
-    # Warm up the first browser lazily on first request; nothing to do here.
     yield
     logger.info("Shutting down")
 
 
 app = FastAPI(
     title="Venezuela Earthquake Missing Persons Search",
-    description=(
-        "Federated search across multiple Venezuelan disaster response platforms. "
-        "No personal data is stored. All results link to original sources."
-    ),
-    version="0.1.0",
+    description="Federated search across Venezuelan disaster response platforms.",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
@@ -346,7 +312,6 @@ async def health() -> dict:
 
 @app.post("/api/search", response_model=SearchResponse)
 async def search(req: SearchRequest, request: Request) -> SearchResponse:
-    """Run a federated search across all enabled platforms in parallel."""
     query = req.query.strip()
     if len(query) < 2:
         raise HTTPException(400, "Query must be at least 2 characters")
@@ -357,13 +322,11 @@ async def search(req: SearchRequest, request: Request) -> SearchResponse:
 
     logger.info("Search: %r (lang=%s)", query, language)
 
-    # Fan out to all platforms in parallel — they are isolated from each other.
     tasks = [search_platform_safe(name, query) for name in ENABLED_PLATFORMS]
     results = await asyncio.gather(*tasks)
 
     total = sum(len(r.matches) for r in results)
 
-    # Format with the MiniMax AI API (falls back to plain text if AI fails).
     formatted_es, formatted_en = await format_results(query, results, language)
 
     return SearchResponse(
@@ -376,11 +339,9 @@ async def search(req: SearchRequest, request: Request) -> SearchResponse:
         formatted_en=formatted_en,
         searches_remaining=remaining,
         disclaimer=(
-            "Esta es una búsqueda agregada. Verifica siempre el estado en la fuente original "
-            "antes de tomar decisiones. La información puede tardar minutos en sincronizarse."
+            "Esta es una búsqueda agregada. Verifica siempre el estado en la fuente original."
             if language == "es" else
-            "This is an aggregated search. Always verify the status on the original source "
-            "before making decisions. Information may take minutes to sync."
+            "This is an aggregated search. Always verify the status on the original source."
         ),
     )
 
@@ -390,7 +351,6 @@ async def search(req: SearchRequest, request: Request) -> SearchResponse:
 # ---------------------------------------------------------------------------
 
 if FRONTEND_DIR and os.path.isdir(FRONTEND_DIR):
-    # Serve the SPA root explicitly so / loads index.html, not a 404.
     @app.get("/")
     async def index() -> FileResponse:
         return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
@@ -399,6 +359,5 @@ if FRONTEND_DIR and os.path.isdir(FRONTEND_DIR):
 else:
     logger.warning(
         "Frontend directory not resolved; SPA will return 404 on GET /. "
-        "API endpoints still work. Check earlier logs for 'Frontend dir resolved to' "
-        "or 'Frontend dir not found' for the path that was attempted."
+        "API endpoints still work."
     )
