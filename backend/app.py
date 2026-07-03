@@ -195,9 +195,13 @@ def _find_frontend_dir() -> Optional[str]:
         # CWD-relative when running locally without Docker
         os.path.join(os.getcwd(), "frontend"),
     ]
+    logger.info("Resolving frontend dir. __file__=%s, cwd=%s", __file__, os.getcwd())
     for p in candidates:
         try:
-            if os.path.isdir(p) and os.path.isfile(os.path.join(p, "index.html")):
+            exists = os.path.isdir(p)
+            has_index = os.path.isfile(os.path.join(p, "index.html")) if exists else False
+            logger.info("  candidate %-50s exists=%s has_index=%s", p, exists, has_index)
+            if exists and has_index:
                 logger.info("Frontend dir resolved to: %s", os.path.abspath(p))
                 return p
         except OSError:
@@ -385,7 +389,7 @@ async def search(req: SearchRequest, request: Request) -> SearchResponse:
 # Static frontend (served from /)
 # ---------------------------------------------------------------------------
 
-if os.path.isdir(FRONTEND_DIR):
+if FRONTEND_DIR and os.path.isdir(FRONTEND_DIR):
     # Serve the SPA root explicitly so / loads index.html, not a 404.
     @app.get("/")
     async def index() -> FileResponse:
@@ -393,4 +397,8 @@ if os.path.isdir(FRONTEND_DIR):
 
     app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 else:
-    logger.warning("Frontend directory not found at %s", FRONTEND_DIR)
+    logger.warning(
+        "Frontend directory not resolved; SPA will return 404 on GET /. "
+        "API endpoints still work. Check earlier logs for 'Frontend dir resolved to' "
+        "or 'Frontend dir not found' for the path that was attempted."
+    )
