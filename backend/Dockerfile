@@ -27,13 +27,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install Chromium for Playwright (no-deps because we already installed them).
 RUN playwright install chromium
 
-# App code — copy each piece explicitly so the layout is deterministic
-# regardless of how Render interprets `dockerContext` in render.yaml.
-# This guarantees the frontend ends up at /app/frontend/ and the app at
-# /app/backend/... which matches what app.py's _find_frontend_dir() expects.
-COPY backend/app.py backend/ai_formatter.py backend/resources.py ./backend/
-COPY backend/platforms/ ./backend/platforms/
-COPY frontend/ ./frontend/
+# App code. We deliberately use `COPY . .` (not explicit backend/ paths)
+# because Render's Blueprint can place the build context at either the
+# backend/ folder OR the repo root — we can't tell from inside the
+# Dockerfile. _find_frontend_dir() in app.py probes several candidate
+# locations so the SPA mount works regardless of where files land.
+COPY . .
 
 # Render sets $PORT; uvicorn must bind to 0.0.0.0.
 ENV PORT=10000
