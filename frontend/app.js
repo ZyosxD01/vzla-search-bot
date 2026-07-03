@@ -527,7 +527,10 @@
         try {
             const res = await fetch("/api/search", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-Requested-With": "vzla-search",
+                },
                 body: JSON.stringify({ query, language: currentLang }),
             });
             if (res.status === 429) {
