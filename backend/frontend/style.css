@@ -1175,3 +1175,76 @@ body {
     .fstar { opacity: 1; }
     .aurora { opacity: 0.3; }
 }
+/* ============================================================
+   Compartir
+   ============================================================ */
+.share {
+    background: var(--night-2);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px 18px 20px;
+    text-align: center;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.share-title {
+    margin: 0 0 6px;
+    font-size: 17px;
+    letter-spacing: -0.005em;
+}
+
+.share-sub {
+    margin: 0 0 16px;
+    color: #9AA7C2;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+
+.share-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+.share-btn {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: var(--night-3);
+    color: var(--text);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    transition: transform .12s, border-color .12s, background .12s, color .12s;
+    min-height: 36px;
+}
+
+.share-btn:hover {
+    transform: translateY(-1px);
+    border-color: var(--vz-yellow);
+}
+
+.share-btn:active { transform: translateY(0); }
+
+.share-btn svg { flex-shrink: 0; }
+
+.share-btn.share-whatsapp:hover  { background: #25D366; color: #fff; border-color: #25D366; }
+.share-btn.share-telegram:hover  { background: #229ED9; color: #fff; border-color: #229ED9; }
+.share-btn.share-x:hover         { background: #000;    color: #fff; border-color: #000; }
+.share-btn.share-facebook:hover  { background: #1877F2; color: #fff; border-color: #1877F2; }
+.share-btn.share-linkedin:hover  { background: #0A66C2; color: #fff; border-color: #0A66C2; }
+.share-btn.share-email:hover     { background: #EA4335; color: #fff; border-color: #EA4335; }
+.share-btn.share-native          { background: var(--vz-yellow); color: #1a1300; border-color: var(--vz-yellow); }
+.share-btn.share-native:hover    { background: #ffdd55; }
+.share-btn.copied                { background: #4ade80; color: #062a14; border-color: #4ade80; }
+
+@media (max-width: 480px) {
+    .share-buttons { gap: 6px; }
+    .share-btn { padding: 7px 11px; font-size: 12px; }
+}

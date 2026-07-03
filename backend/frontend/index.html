@@ -4,7 +4,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="theme-color" content="#040A1C">
-    <meta name="description" content="Búsqueda federada de personas desaparecidas en el terremoto de Venezuela del 24 de junio de 2026.">
+    <meta name="description" content="Búsqueda federada de personas desaparecidas en el terremoto de Venezuela del 24 de junio de 2026. 13 plataformas oficiales y comunitarias. Sin instalación, sin registro, bilingüe ES/EN.">
+
+    <!-- Open Graph (Facebook, LinkedIn, Slack, Discord, WhatsApp, iMessage, Telegram) -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://vzla-search-bot.onrender.com/">
+    <meta property="og:title" content="🇻🇪 Búsqueda Terremoto Venezuela">
+    <meta property="og:description" content="Busca personas desaparecidas del terremoto de Venezuela en 13 plataformas oficiales y comunitarias. Sin instalación, sin registro, bilingüe ES/EN.">
+    <meta property="og:image" content="https://vzla-search-bot.onrender.com/og-preview.png">
+    <meta property="og:image:secure_url" content="https://vzla-search-bot.onrender.com/og-preview.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Vista previa de Búsqueda Terremoto Venezuela — cielo estrellado con bandera tricolor">
+    <meta property="og:locale" content="es_VE">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta property="og:site_name" content="Búsqueda Terremoto Venezuela">
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="🇻🇪 Búsqueda Terremoto Venezuela">
+    <meta name="twitter:description" content="Busca personas desaparecidas del terremoto de Venezuela en 13 plataformas. Sin instalación, sin registro, bilingüe ES/EN.">
+    <meta name="twitter:image" content="https://vzla-search-bot.onrender.com/og-preview.png">
+    <meta name="twitter:image:alt" content="Vista previa de Búsqueda Terremoto Venezuela">
+
     <title>Búsqueda Terremoto Venezuela 🇻🇪</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -258,6 +280,49 @@
                 · Playwright · MiniMax · Render
             </p>
         </footer>
+
+        <!-- Compartir -->
+        <section class="share reveal" aria-label="Compartir">
+            <h2 class="share-title" data-i18n="share_title">Comparte si conoces a alguien buscando</h2>
+            <p class="share-sub" data-i18n="share_sub">Un clic puede ayudar a una familia a encontrar a su ser querido.</p>
+            <div class="share-buttons">
+                <button type="button" class="share-btn share-native" data-share="native" hidden>
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                        <line x1="8.6" y1="10.5" x2="15.4" y2="6.5"/><line x1="8.6" y1="13.5" x2="15.4" y2="17.5"/>
+                    </svg>
+                    <span data-i18n="share_native">Compartir</span>
+                </button>
+                <button type="button" class="share-btn share-whatsapp" data-share="whatsapp" aria-label="WhatsApp">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor"><path d="M17.5 14.4c-.3-.2-1.7-.8-2-.9-.3-.1-.5-.2-.7.2-.2.3-.8.9-1 1.1-.2.2-.4.2-.7.1-.3-.2-1.2-.5-2.4-1.5-.9-.8-1.5-1.8-1.7-2.1-.2-.3 0-.5.1-.6l.5-.6c.2-.2.2-.4.4-.6.1-.2 0-.4 0-.6 0-.2-.7-1.6-.9-2.2-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4-.3.3-1 1-1 2.5s1.1 2.9 1.2 3.1c.1.2 2.1 3.3 5.2 4.5.7.3 1.3.5 1.7.6.7.2 1.3.2 1.8.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4-.1-.1-.3-.2-.6-.4M12 21.3c-1.7 0-3.4-.5-4.8-1.3l-.3-.2-3.6.9 1-3.5-.2-.4c-1-1.6-1.5-3.4-1.5-5.2C2.6 6.5 6.8 2.7 12 2.7s9.4 3.8 9.4 9-.4 9.6-9.4 9.6m8-17.6C18 1.4 15.1.4 12 .4 5.5.4.2 5.7.2 12.2c0 2.1.6 4.2 1.6 6L.4 23.6l5.6-1.5c1.7.9 3.7 1.4 5.7 1.4h.1c6.5 0 11.8-5.3 11.8-11.8 0-3.2-1.2-6.1-3.4-8.3"/></svg>
+                    <span>WhatsApp</span>
+                </button>
+                <button type="button" class="share-btn share-telegram" data-share="telegram" aria-label="Telegram">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor"><path d="M22 3 2 11l6 2 2 6 4-4 6 5zM9 14l9-7-7 8z"/></svg>
+                    <span>Telegram</span>
+                </button>
+                <button type="button" class="share-btn share-x" data-share="twitter" aria-label="X (Twitter)">
+                    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M18.9 2H22l-7.4 8.5L23 22h-7l-5.4-7-6.2 7H1.5l8-9.1L1 2h7.1l4.9 6.5L18.9 2zm-1.2 18h1.9L7 4H5z"/></svg>
+                    <span>X</span>
+                </button>
+                <button type="button" class="share-btn share-facebook" data-share="facebook" aria-label="Facebook">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor"><path d="M14 9h3V6h-3c-2.2 0-4 1.8-4 4v2H8v3h2v7h3v-7h3l1-3h-4v-2c0-.6.4-1 1-1"/></svg>
+                    <span>Facebook</span>
+                </button>
+                <button type="button" class="share-btn share-linkedin" data-share="linkedin" aria-label="LinkedIn">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="currentColor"><path d="M5 3.5C5 4.9 3.9 6 2.5 6S0 4.9 0 3.5 1.1 1 2.5 1 5 2.1 5 3.5M5 8H0v14h5zm7.5 0H7.5v14h5v-7c0-1.5.5-3 3-3s3 1.5 3 3v7h5v-7.7c0-5-2.5-6.3-5-6.3-2 0-3 1-3.5 1.7z"/></svg>
+                    <span>LinkedIn</span>
+                </button>
+                <button type="button" class="share-btn share-email" data-share="email" aria-label="Email">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+                    <span data-i18n="share_email">Email</span>
+                </button>
+                <button type="button" class="share-btn share-copy" data-share="copy" aria-label="Copiar enlace">
+                    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/></svg>
+                    <span data-i18n="share_copy">Copiar enlace</span>
+                </button>
+            </div>
+        </section>
     </main>
 
     <script src="app.js"></script>

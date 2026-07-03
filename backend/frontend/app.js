@@ -38,6 +38,12 @@
             dir_aid: "Acopio / ayuda / refugios",
             dir_pets: "Mascotas",
             dir_official: "Fuentes oficiales",
+            share_title: "Comparte si conoces a alguien buscando",
+            share_sub: "Un clic puede ayudar a una familia a encontrar a su ser querido.",
+            share_native: "Compartir",
+            share_copy: "Copiar enlace",
+            share_email: "Email",
+            share_copied: "✓ Copiado",
             consent_title: "Antes de usar la búsqueda",
             consent_p1: "Esta página es un buscador auspiciado que consulta plataformas ya creadas por la comunidad y organizaciones. No tenemos base de datos propia ni almacenamos información personal.",
             consent_p2: "No nos hacemos responsables por los detalles publicados en las fuentes. Verifica siempre cada dato en el sitio original antes de tomar decisiones.",
@@ -90,6 +96,12 @@
             dir_aid: "Supplies / aid / shelters",
             dir_pets: "Pets",
             dir_official: "Official sources",
+            share_title: "Share if you know someone searching",
+            share_sub: "One click can help a family find their loved one.",
+            share_native: "Share",
+            share_copy: "Copy link",
+            share_email: "Email",
+            share_copied: "✓ Copied",
             consent_title: "Before you use the search",
             consent_p1: "This page is a sponsored search tool that queries platforms already built by the community and organizations. We have no database of our own and we store no personal information.",
             consent_p2: "We are not responsible for the details published on the sources. Always verify every piece of information on the original site before making decisions.",
@@ -643,6 +655,82 @@
             rippleOn(b, e);
             input.value = b.dataset.q;
             input.focus();
+        });
+    });
+
+    // ---------- COMPARTIR ----------
+    const SHARE_TEXT = {
+        es: "🇻🇪 Busca personas desaparecidas del terremoto de Venezuela en 13 plataformas a la vez — sin instalación:",
+        en: "🇻🇪 Search for missing persons from the Venezuela earthquake across 13 platforms at once — no install:",
+    };
+
+    function shareUrl() {
+        return window.location.href;
+    }
+
+    function shareText() {
+        return SHARE_TEXT[currentLang] || SHARE_TEXT.es;
+    }
+
+    const SHARE_HANDLERS = {
+        native: async () => {
+            if (!navigator.share) return;
+            try {
+                await navigator.share({
+                    title: t("title"),
+                    text: shareText(),
+                    url: shareUrl(),
+                });
+                Sound.play("tick");
+            } catch (_) { /* user cancelled */ }
+        },
+        whatsapp: () => openWindow(`https://wa.me/?text=${encodeURIComponent(shareText() + " " + shareUrl())}`),
+        telegram: () => openWindow(`https://t.me/share/url?url=${encodeURIComponent(shareUrl())}&text=${encodeURIComponent(shareText())}`),
+        twitter: () => openWindow(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText())}&url=${encodeURIComponent(shareUrl())}`),
+        facebook: () => openWindow(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl())}`),
+        linkedin: () => openWindow(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl())}`),
+        email: () => {
+            const subject = encodeURIComponent(currentLang === "en" ? "Venezuela Earthquake Search" : "Búsqueda Terremoto Venezuela");
+            const body = encodeURIComponent(shareText() + "\n\n" + shareUrl());
+            openWindow(`mailto:?subject=${subject}&body=${body}`);
+        },
+        copy: async (btn) => {
+            try {
+                await navigator.clipboard.writeText(shareUrl());
+                const labelEl = btn.querySelector("[data-i18n]") || btn;
+                const orig = labelEl.textContent;
+                btn.classList.add("copied");
+                labelEl.textContent = t("share_copied");
+                Sound.play("tick");
+                setTimeout(() => {
+                    btn.classList.remove("copied");
+                    labelEl.textContent = t("share_copy");
+                }, 1800);
+            } catch (_) { /* clipboard blocked */ }
+        },
+    };
+
+    function openWindow(url) {
+        try {
+            window.open(url, "_blank", "noopener,noreferrer");
+            Sound.play("tick");
+        } catch (_) { /* popup blocked */ }
+    }
+
+    // Show native share button only where supported (mobile).
+    if (navigator.share) {
+        const nativeBtn = document.querySelector('[data-share="native"]');
+        if (nativeBtn) nativeBtn.hidden = false;
+    }
+
+    document.querySelectorAll("[data-share]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+            rippleOn(btn, e);
+            const kind = btn.dataset.share;
+            const handler = SHARE_HANDLERS[kind];
+            if (!handler) return;
+            if (kind === "copy") return handler(btn);
+            handler();
         });
     });
 
