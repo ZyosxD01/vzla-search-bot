@@ -170,10 +170,48 @@ def check_rate_limit(request: Request) -> int:
         remaining = min(remaining, RATE_LIMIT_MAX - len(_rate_log[key]))
     return remaining
 
-# Path where the static frontend lives (relative to backend/).
-# Inside the Docker container the whole backend/ tree is copied to /app/,
-# so the frontend sits at /app/frontend/ — same directory as this file.
-FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
+# ---------------------------------------------------------------------------
+# Frontend path resolution
+# ---------------------------------------------------------------------------
+# Render's Blueprint interpretation of dockerContext is not always obvious:
+#   - if dockerContext = the backend folder, /app/frontend/ exists
+#   - if dockerContext = the repo root, frontend sits at /app/frontend/
+#     and app.py lives at /app/backend/app.py
+# To stay robust across both layouts (and a local venv), try the obvious
+# candidates and log the one that actually has index.html.
+
+def _find_frontend_dir() -> Optional[str]:
+    here = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        # Same directory as app.py — works when backend/ contents land flat in /app/
+        os.path.join(here, "frontend"),
+        # Sibling layout — frontend sits next to the backend/ folder
+        os.path.join(here, "..", "frontend"),
+        # Two levels up — covers unusual COPY contexts
+        os.path.join(here, "..", "..", "frontend"),
+        # Hardcoded /app paths as a last resort
+        "/app/frontend",
+        "/frontend",
+        # CWD-relative when running locally without Docker
+        os.path.join(os.getcwd(), "frontend"),
+    ]
+    for p in candidates:
+        try:
+            if os.path.isdir(p) and os.path.isfile(os.path.join(p, "index.html")):
+                logger.info("Frontend dir resolved to: %s", os.path.abspath(p))
+                return p
+        except OSError:
+            continue
+    logger.error(
+        "Frontend dir not found. Looked in: %s. "
+        "If the SPA fails to load, check that the Dockerfile copies frontend/ "
+        "into the image and that __file__ resolves to the expected location.",
+        candidates,
+    )
+    return None
+
+
+FRONTEND_DIR = _find_frontend_dir()
 
 
 # ---------------------------------------------------------------------------

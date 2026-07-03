@@ -27,8 +27,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install Chromium for Playwright (no-deps because we already installed them).
 RUN playwright install chromium
 
-# App code.
-COPY . .
+# App code — copy each piece explicitly so the layout is deterministic
+# regardless of how Render interprets `dockerContext` in render.yaml.
+# This guarantees the frontend ends up at /app/frontend/ and the app at
+# /app/backend/... which matches what app.py's _find_frontend_dir() expects.
+COPY backend/app.py backend/ai_formatter.py backend/resources.py ./backend/
+COPY backend/platforms/ ./backend/platforms/
+COPY frontend/ ./frontend/
 
 # Render sets $PORT; uvicorn must bind to 0.0.0.0.
 ENV PORT=10000
