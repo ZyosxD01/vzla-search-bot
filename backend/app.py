@@ -171,7 +171,9 @@ def check_rate_limit(request: Request) -> int:
     return remaining
 
 # Path where the static frontend lives (relative to backend/).
-FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
+# Inside the Docker container the whole backend/ tree is copied to /app/,
+# so the frontend sits at /app/frontend/ — same directory as this file.
+FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend")
 
 
 # ---------------------------------------------------------------------------
