@@ -101,7 +101,7 @@ async def format_results(query, results, language_hint):
             resp.raise_for_status()
             data = resp.json()
 
-        content = (data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
         parsed = json.loads(content)
         return (str(parsed.get("es", "")).strip(), str(parsed.get("en", "")).strip())
     except Exception as exc:
