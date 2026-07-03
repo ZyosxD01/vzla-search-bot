@@ -30,3 +30,8 @@ Thumbs.db
 dist/
 build/
 *.egg-info/
+
+# Claude Code / OpenClaw local artifacts — never commit these
+.claude/
+.agents/
+skills-lock.json
