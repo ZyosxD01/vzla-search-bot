@@ -1,0 +1,20 @@
+services:
+  vzla-search:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: vzla-search-bot:latest
+    container_name: vzla-search-bot
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    ports:
+      # Bind to localhost only — Cloudflare Tunnel reaches this port directly,
+      # nothing needs to be exposed on the public interface.
+      - "127.0.0.1:8000:10000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:10000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
