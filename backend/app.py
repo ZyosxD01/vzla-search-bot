@@ -1,18 +1,24 @@
 """
 Venezuela Earthquake Missing Persons Search — Backend API
 
-A federated search engine that queries multiple Venezuelan disaster response
-platforms in parallel, consolidates results, and returns bilingual
-formatted responses via the MiniMax AI API.
+V2: Deep-link aggregator. Instead of scraping 13 platforms (expensive,
+fragile, slow), this version builds pre-filled search URLs that take the
+user straight to each platform's own search box with the query already
+typed in. No databases, no scraping, no Playwright — just URL templates.
+
+Ethics & legal guardrails (per PLAN v2 editorial policy):
+- No personal data is stored
+- All results are links to original source platforms
+- Sends real traffic to community-built platforms (helps them monetize)
+- Rate limiting prevents abuse
 
 Architecture:
 - FastAPI for the HTTP layer
-- Playwright for headless browser automation against JS-rendered sites
-- MiniMax API for bilingual response formatting
-- No persistent database — all queries are live federated searches
+- No scraping (removed Playwright — was OOM-killing the 512MB free tier)
+- Deep-link generator for 18 Venezuelan disaster response platforms
+- No persistent database
 """
 
-import asyncio
 import logging
 import os
 import re
@@ -27,8 +33,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from ai_formatter import format_results
-from platforms import get_searcher
+from platforms.links import PLATFORMS, render_response, generate_search_links, group_by_category
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("vzla-search")
@@ -37,37 +42,7 @@ logger = logging.getLogger("vzla-search")
 # Configuration
 # ---------------------------------------------------------------------------
 
-ENABLED_PLATFORMS = [
-    "desaparecidosterremotovenezuela",
-    "venezuelatebusca",
-    "statusvzla",
-    "terremotoenvenezuela",
-    "busquedavzla",
-    "rescateve",
-    "venapp",
-    "reportevenezuela",
-    "pacientesterremoto",
-    "pacientesinfo",
-    "venezuelaayuda",
-    "huellascan",
-    "icrc",
-]
-
-PLATFORM_TIMEOUT_SECONDS = 25
-
-# Concurrency cap for Playwright browser contexts.
-# Render free tier has 512MB RAM; Chromium needs ~300-500MB. Spawning
-# 13 contexts in parallel OOM-kills the browser process. 3 concurrent
-# keeps peak memory well under the cap.
-PLAYWRIGHT_CONCURRENCY = 3
-_search_semaphore: Optional[asyncio.Semaphore] = None
-
-
-def _get_search_semaphore() -> asyncio.Semaphore:
-    global _search_semaphore
-    if _search_semaphore is None:
-        _search_semaphore = asyncio.Semaphore(PLAYWRIGHT_CONCURRENCY)
-    return _search_semaphore
+ENABLED_PLATFORMS = [p["slug"] for p in PLATFORMS]
 
 # --- Anti-abuse layers (no user registration, by design) ------------------
 REQUIRED_APP_HEADER = "vzla-search"
@@ -99,7 +74,7 @@ def _rate_keys(request: Request) -> List[str]:
 
 def _limited(retry_minutes: int, retry_seconds: int = 0) -> HTTPException:
     if retry_seconds:
-        msg_es = f"Muy rápido — espera {retry_seconds}s entre búsquedas."
+        msg_es = f"Muy rápido — esperá {retry_seconds}s entre búsquedas."
         msg_en = f"Too fast — wait {retry_seconds}s between searches."
     else:
         msg_es = (
@@ -201,21 +176,21 @@ class SearchRequest(BaseModel):
     language: Optional[str] = Field("auto")
 
 
-class PlatformResult(BaseModel):
+class SearchResult(BaseModel):
+    """Each result is a deep-link to a platform's search page."""
     platform: str
     platform_label: str
     platform_url: str
-    matches: List[dict] = []
-    error: Optional[str] = None
-    timing_ms: int = 0
+    search_url: str
+    category: str
+    description: Optional[str] = None
 
 
 class SearchResponse(BaseModel):
     query: str
     language: str
-    total_matches: int
     platforms_queried: int
-    results: List[PlatformResult]
+    results: List[SearchResult]
     formatted_es: str
     formatted_en: str
     disclaimer: str
@@ -243,57 +218,21 @@ def detect_language(text: str) -> str:
     return "en"
 
 
-async def search_platform_safe(name: str, query: str) -> PlatformResult:
-    """Run a single platform search with timeout + error isolation + semaphore.
-
-    The semaphore caps simultaneous Chromium contexts so the browser
-    process isn't OOM-killed on Render's 512MB free tier.
-    """
-    started = asyncio.get_event_loop().time()
-    try:
-        async with _get_search_semaphore():
-            searcher = get_searcher(name)
-            matches = await asyncio.wait_for(
-                searcher.search(query), timeout=PLATFORM_TIMEOUT_SECONDS
-            )
-        elapsed_ms = int((asyncio.get_event_loop().time() - started) * 1000)
-        return PlatformResult(
-            platform=name,
-            platform_label=searcher.label,
-            platform_url=searcher.url,
-            matches=matches or [],
-            timing_ms=elapsed_ms,
-        )
-    except asyncio.TimeoutError:
-        elapsed_ms = int((asyncio.get_event_loop().time() - started) * 1000)
-        logger.warning("Platform %s timed out after %ds", name, PLATFORM_TIMEOUT_SECONDS)
-        return PlatformResult(
-            platform=name, platform_label=name, platform_url="",
-            error=f"Timeout after {PLATFORM_TIMEOUT_SECONDS}s", timing_ms=elapsed_ms,
-        )
-    except Exception as exc:
-        elapsed_ms = int((asyncio.get_event_loop().time() - started) * 1000)
-        logger.exception("Platform %s failed", name)
-        return PlatformResult(
-            platform=name, platform_label=name, platform_url="",
-            error=f"{type(exc).__name__}: {exc}", timing_ms=elapsed_ms,
-        )
-
 # ---------------------------------------------------------------------------
 # App
 # ---------------------------------------------------------------------------
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    logger.info("Starting up — enabled platforms: %s", ENABLED_PLATFORMS)
+    logger.info("Starting up — %d platforms enabled (deep-link mode)", len(ENABLED_PLATFORMS))
     yield
     logger.info("Shutting down")
 
 
 app = FastAPI(
     title="Venezuela Earthquake Missing Persons Search",
-    description="Federated search across Venezuelan disaster response platforms.",
-    version="0.2.0",
+    description="Federated deep-link aggregator for Venezuelan disaster response platforms.",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -307,11 +246,12 @@ app.add_middleware(
 
 @app.get("/health")
 async def health() -> dict:
-    return {"status": "ok", "platforms": ENABLED_PLATFORMS}
+    return {"status": "ok", "mode": "deep-link", "platforms": ENABLED_PLATFORMS}
 
 
 @app.post("/api/search", response_model=SearchResponse)
 async def search(req: SearchRequest, request: Request) -> SearchResponse:
+    """Return deep links to all platforms with the query pre-filled."""
     query = req.query.strip()
     if len(query) < 2:
         raise HTTPException(400, "Query must be at least 2 characters")
@@ -322,26 +262,40 @@ async def search(req: SearchRequest, request: Request) -> SearchResponse:
 
     logger.info("Search: %r (lang=%s)", query, language)
 
-    tasks = [search_platform_safe(name, query) for name in ENABLED_PLATFORMS]
-    results = await asyncio.gather(*tasks)
+    # Generate deep links for every enabled platform.
+    links = generate_search_links(query)
 
-    total = sum(len(r.matches) for r in results)
+    # Group by category for nicer presentation.
+    _ = group_by_category(links)  # sanity check; render_response regroups
 
-    formatted_es, formatted_en = await format_results(query, results, language)
+    # Render bilingual responses.
+    formatted_es = render_response(query, lang="es")
+    formatted_en = render_response(query, lang="en")
+
+    results = [
+        SearchResult(
+            platform=link["platform"],
+            platform_label=link["platform_label"],
+            platform_url=link["platform_url"],
+            search_url=link["search_url"],
+            category=link["category"],
+            description=link.get("description"),
+        )
+        for link in links
+    ]
 
     return SearchResponse(
         query=query,
         language=language,
-        total_matches=total,
         platforms_queried=len(results),
         results=results,
         formatted_es=formatted_es,
         formatted_en=formatted_en,
         searches_remaining=remaining,
         disclaimer=(
-            "Esta es una búsqueda agregada. Verifica siempre el estado en la fuente original."
+            "Esta es una guía de búsqueda. Cada link abre la plataforma oficial con tu consulta pre-cargada. Verifica siempre el estado en la fuente original."
             if language == "es" else
-            "This is an aggregated search. Always verify the status on the original source."
+            "This is a search guide. Each link opens the official platform with your query pre-filled. Always verify the status on the original source."
         ),
     )
 
