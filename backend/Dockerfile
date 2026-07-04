@@ -24,8 +24,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Chromium for Playwright (no-deps because we already installed them).
-RUN playwright install chromium
 
 # App code. We deliberately use `COPY . .` (not explicit backend/ paths)
 # because Render's Blueprint can place the build context at either the
